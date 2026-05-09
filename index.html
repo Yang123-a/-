@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>克苏鲁打字游戏</title>
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Microsoft Yahei", sans-serif;
+}
+body {
+  background: #050308;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+  color: #6aff9e;
+  background-image: radial-gradient(circle at 50% 50%, #1a0a18 0%, #050308 70%);
+  min-height: 100vh;
+  padding: 10px 0;
+}
+#gameCanvas {
+  border: 2px solid #5a2b55;
+  box-shadow: 0 0 30px #7a3b75, 0 0 60px #3a1a35;
+  max-width: 100%;
+  height: auto;
+  display: block;
+  background: #0a0508;
+}
+.info-bar {
+  width: 90%;
+  max-width: 800px;
+  font-size: clamp(14px, 4vw, 18px);
+  padding: 8px 0;
+  display: flex;
+  justify-content: space-around;
+  text-shadow: 0 0 8px #6aff9e;
+  background: rgba(30,10,25,0.5);
+  border-radius: 8px;
+  margin-bottom: 5px;
+  border: 1px solid #5a2b55;
+}
+.ctrl-btn {
+  margin: 8px 5px;
+  padding: 8px 24px;
+  background: transparent;
+  border: 1px solid #6aff9e;
+  color: #6aff9e;
+  border-radius: 6px;
+  cursor: pointer;
+  text-shadow: 0 0 5px #6aff9e;
+  transition: 0.3s;
+  font-size: clamp(14px, 3vw, 16px);
+}
+.keyboard {
+  margin-top: 10px;
+  display: grid;
+  gap: 5px;
+  width: 95%;
+  max-width: 800px;
+}
+.key-row {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  width: 100%;
+}
+.key {
+  flex: 1;
+  min-width: 30px;
+  height: clamp(40px, 10vw, 50px);
+  line-height: clamp(40px, 10vw, 50px);
+  text-align: center;
+  border: 1px solid #5a2b55;
+  border-radius: 5px;
+  background: rgba(40,15,35,0.4);
+  text-shadow: 0 0 5px #9f6899;
+  transition: 0.15s;
+  color: #c99fc4;
+  font-size: clamp(16px, 4vw, 18px);
+  touch-action: manipulation;
+  cursor: pointer;
+}
+.key.active {
+  background: #6aff9e;
+  color: #050308;
+  box-shadow: 0 0 12px #6aff9e;
+  border-color: #6aff9e;
+}
+.key.backspace {
+  flex: 1.5;
+  font-size: clamp(12px, 3vw, 14px);
+}
+.key.enter {
+  flex: 1.5;
+  font-size: clamp(12px, 3vw, 14px);
+}
+#startMask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(5,3,8,0.95);
+  z-index: 99;
+  padding: 20px;
+  text-align: center;
+}
+#startMask > div {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+#startMask h2 {
+  font-size: clamp(28px, 8vw, 42px);
+  margin-bottom: 30px;
+  text-shadow: 0 0 15px #7a3b75, 0 0 30px #6aff9e;
+  letter-spacing: 4px;
+  color: #c99fc4;
+}
+@media (max-width: 480px) {
+  .key-row { gap: 3px; }
+  .key { min-width: 25px; height: clamp(35px, 10vw, 45px); line-height: clamp(35px, 10vw, 45px); }
+  .info-bar { flex-wrap: wrap; gap: 5px; padding: 8px; }
+  .info-bar span { width: 45%; text-align: center; }
+}
+</style>
+</head>
+<body>
+
+<div id="startMask">
+  <div>
+    <h2>旧日支配 · 克苏鲁打字</h2>
+    <div id="startBtn" style="display:inline-block;padding:15px 45px;font-size:clamp(18px,5vw,20px);border:2px solid #6aff9e;color:#6aff9e;background:rgba(5,3,8,0.9);border-radius:8px;cursor:pointer;touch-action:manipulation;user-select:none;-webkit-user-select:none;position:relative;z-index:99999;pointer-events:auto;min-width:150px;text-align:center;" role="button" tabindex="0">踏入深渊</div>
+  </div>
+</div>
+
+<div class="info-bar">
+  <span>分数：<span id="score">0</span></span>
+  <span>层级：<span id="level">1</span></span>
+  <span>理智：<span id="hp">100</span></span>
+  <span>最高记录：<span id="maxScore">0</span></span>
+</div>
+
+<canvas id="gameCanvas"></canvas>
+
+<div>
+  <button class="ctrl-btn" id="pauseBtn">停滞</button>
+  <button class="ctrl-btn" id="restartBtn">重置理智</button>
+</div>
+
+<div class="keyboard">
+  <div class="key-row">
+    <div class="key">Q</div><div class="key">W</div><div class="key">E</div><div class="key">R</div><div class="key">T</div>
+    <div class="key">Y</div><div class="key">U</div><div class="key">I</div><div class="key">O</div><div class="key">P</div>
+  </div>
+  <div class="key-row">
+    <div class="key">A</div><div class="key">S</div><div class="key">D</div><div class="key">F</div><div class="key">G</div>
+    <div class="key">H</div><div class="key">J</div><div class="key">K</div><div class="key">L</div>
+  </div>
+  <div class="key-row">
+    <div class="key">Z</div><div class="key">X</div><div class="key">C</div><div class="key">V</div><div class="key">B</div>
+    <div class="key">N</div><div class="key">M</div>
+    <div class="key backspace">删除</div>
+  </div>
+  <div class="key-row">
+    <div class="key enter">确认</div>
+  </div>
+</div>
+
+<script>
+// ====== 极简兼容版游戏引擎 ======
+
+// 1. Canvas
+var canvas = document.getElementById('gameCanvas');
+var ctx = canvas.getContext('2d');
+var stars = [];
+
+function resizeCanvas() {
+  var width = Math.min(window.innerWidth * 0.9, 800);
+  var height = (width / 800) * 500;
+  canvas.width = width;
+  canvas.height = height;
+  stars = [];
+  for(var i = 0; i < Math.floor(120 * (width/800)); i++) {
+    stars.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      r: Math.random() * 1.2 + 0.3,
+      speed: Math.random() * 0.25 + 0.05,
+      color: Math.random() > 0.5 ? '#7a3b75' : '#6aff9e',
+      alpha: Math.random() * 0.5 + 0.2
+    });
+  }
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+// 2. DOM元素
+var startMask = document.getElementById('startMask');
+var startBtn = document.getElementById('startBtn');
+var pauseBtn = document.getElementById('pauseBtn');
+var restartBtn = document.getElementById('restartBtn');
+var scoreDom = document.getElementById('score');
+var levelDom = document.getElementById('level');
+var hpDom = document.getElementById('hp');
+var maxScoreDom = document.getElementById('maxScore');
+var keys = document.querySelectorAll('.key');
+
+// 3. 游戏状态
+var gameStart = false;
+var gamePause = false;
+var score = 0;
+var level = 1;
+var hp = 100;
+var inputStr = "";
+var maxScore = 0;
+
+// 4. 单词库
+var wordLibShort = ["cult","myth","dark","void","evil","ghost","fate","doom","rite"];
+var wordLibMid = ["cthulhu","abyss","horror","shadow","ancient","temple","curse","cosmic"];
+var wordLibLong = ["sleeper","dreadful","madness","eternal","nameless","forgotten","ritual"];
+var lastWord = "";
+var dropWord = "";
+var wordX = 0;
+var wordY = 0;
+var nowSpeed = 0.5;
+
+function getRandomWord() {
+  var arr;
+  if(level <= 2) arr = wordLibShort;
+  else if(level <= 4) arr = wordLibMid;
+  else arr = wordLibLong;
+  var word;
+  do {
+    word = arr[Math.floor(Math.random() * arr.length)];
+  } while(word === lastWord);
+  lastWord = word;
+  return word;
+}
+
+function newWord() {
+  dropWord = getRandomWord();
+  wordX = 60 * (canvas.width/800) + Math.random() * (canvas.width - 180 * (canvas.width/800));
+  wordY = 0;
+  nowSpeed = (0.5 + level * 0.25) * (canvas.width/800);
+  inputStr = "";
+}
+
+function updateUI() {
+  scoreDom.innerText = score;
+  levelDom.innerText = level;
+  hpDom.innerText = hp;
+}
+
+// 5. 启动游戏
+function startGame() {
+  startMask.style.display = 'none';
+  gameStart = true;
+  gamePause = false;
+  score = 0;
+  level = 1;
+  hp = 100;
+  inputStr = "";
+  pauseBtn.innerText = '停滞';
+  newWord();
+  updateUI();
+  gameLoop();
+}
+
+// 绑定启动按钮
+startBtn.onclick = function(e) {
+  if(e) { e.preventDefault(); e.stopPropagation(); }
+  startGame();
+  return false;
+};
+startBtn.ontouchend = function(e) {
+  if(e) { e.preventDefault(); e.stopPropagation(); }
+  startGame();
+  return false;
+};
+
+// 6. 暂停按钮
+pauseBtn.onclick = function() {
+  if(!gameStart) return;
+  gamePause = !gamePause;
+  pauseBtn.innerText = gamePause ? '继续' : '停滞';
+};
+
+// 7. 重置按钮
+restartBtn.onclick = function() {
+  score = 0;
+  level = 1;
+  hp = 100;
+  inputStr = "";
+  gamePause = false;
+  gameStart = true;
+  pauseBtn.innerText = '停滞';
+  newWord();
+  updateUI();
+};
+
+// 8. 按键处理
+function handleKeyPress(key) {
+  if(!gameStart || gamePause) return;
+  if(key === 'backspace') {
+    inputStr = inputStr.slice(0, -1);
+  } else if(key === 'enter') {
+    if(inputStr === dropWord) {
+      score += 10;
+      if(score % 50 === 0) level++;
+      if(score > maxScore) {
+        maxScore = score;
+        maxScoreDom.innerText = maxScore;
+      }
+      newWord();
+    }
+  } else if(/^[a-zA-Z]$/.test(key)) {
+    inputStr += key.toLowerCase();
+  }
+}
+
+// 物理键盘
+document.onkeydown = function(e) {
+  if(!gameStart || gamePause) {
+    if(e.key === 'Enter' && startMask.style.display !== 'none') {
+      startGame();
+    }
+    return;
+  }
+  e.preventDefault();
+  var key = e.key.toLowerCase();
+  if(/^[a-z]$/.test(key)) {
+    handleKeyPress(key);
+    keys.forEach(function(k) {
+      if(k.innerText === key.toUpperCase()) k.classList.add('active');
+    });
+  }
+  if(e.key === 'Backspace' || e.key === 'Delete') {
+    handleKeyPress('backspace');
+    document.querySelector('.backspace').classList.add('active');
+  }
+  if(e.key === 'Enter') {
+    handleKeyPress('enter');
+    document.querySelector('.enter').classList.add('active');
+  }
+};
+
+document.onkeyup = function() {
+  keys.forEach(function(k) { k.classList.remove('active'); });
+};
+
+// 虚拟键盘
+keys.forEach(function(key) {
+  function trigger() {
+    var keyValue = key.innerText;
+    if(keyValue === '删除') handleKeyPress('backspace');
+    else if(keyValue === '确认') handleKeyPress('enter');
+    else handleKeyPress(keyValue.toLowerCase());
+  }
+  key.onmousedown = function(e) { e.preventDefault(); key.classList.add('active'); trigger(); };
+  key.onmouseup = function() { key.classList.remove('active'); };
+  key.onmouseleave = function() { key.classList.remove('active'); };
+  key.ontouchstart = function(e) { e.preventDefault(); key.classList.add('active'); };
+  key.ontouchend = function(e) { e.preventDefault(); key.classList.remove('active'); trigger(); };
+});
+
+// 9. 绘制
+function drawStars() {
+  stars.forEach(function(s) {
+    s.y += s.speed;
+    if(s.y > canvas.height) { s.y = 0; s.x = Math.random() * canvas.width; }
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    ctx.fillStyle = s.color;
+    ctx.globalAlpha = s.alpha;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  });
+}
+
+function drawWord() {
+  var fontSize = Math.max(20, 32 * (canvas.width/800));
+  ctx.font = fontSize + 'px Microsoft Yahei';
+  ctx.textAlign = 'left';
+  ctx.shadowBlur = 18;
+  var charWidth = 20 * (canvas.width/800);
+  for(var i = 0; i < dropWord.length; i++) {
+    var char = dropWord[i];
+    var inputChar = inputStr[i];
+    if(inputChar === undefined) {
+      ctx.fillStyle = '#ff88ff';
+      ctx.shadowColor = '#ff44ff';
+    } else if(inputChar === char) {
+      ctx.fillStyle = '#6aff9e';
+      ctx.shadowColor = '#6aff9e';
+    } else {
+      ctx.fillStyle = '#ff4444';
+      ctx.shadowColor = '#ff2222';
+    }
+    ctx.fillText(char, wordX + i * charWidth, wordY);
+  }
+  ctx.shadowBlur = 0;
+}
+
+// 10. 游戏循环
+var gameInterval = null;
+
+function gameLoop() {
+  if(gameInterval) clearInterval(gameInterval);
+
+  gameInterval = setInterval(function() {
+    if(gamePause) return;
+
+    // 清屏
+    ctx.fillStyle = 'rgba(5,3,8,0.3)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // 粒子
+    drawStars();
+
+    // 单词下落
+    wordY += nowSpeed;
+
+    // 落地检测
+    if(wordY > canvas.height - 40 * (canvas.height/500)) {
+      hp -= 15;
+      updateUI();
+      newWord();
+      if(hp <= 0) {
+        ctx.fillStyle = '#ff4444';
+        ctx.font = Math.max(30, 60 * (canvas.width/800)) + 'px Microsoft Yahei';
+        ctx.textAlign = 'center';
+        ctx.shadowColor = '#ff2222';
+        ctx.shadowBlur = 25;
+        ctx.fillText('理智崩坏', canvas.width/2, canvas.height/2);
+        ctx.fillStyle = '#6aff9e';
+        ctx.font = Math.max(16, 24 * (canvas.width/800)) + 'px Microsoft Yahei';
+        ctx.fillText('点击「重置理智」重新开始', canvas.width/2, canvas.height/2 + 60);
+        gamePause = true;
+        pauseBtn.innerText = '继续';
+        clearInterval(gameInterval);
+        return;
+      }
+    }
+
+    // 绘制
+    drawWord();
+    ctx.fillStyle = '#6aff9e';
+    ctx.font = Math.max(18, 28 * (canvas.width/800)) + 'px Microsoft Yahei';
+    ctx.textAlign = 'left';
+    ctx.fillText('低语：' + inputStr, 30 * (canvas.width/800), canvas.height - 30 * (canvas.height/500));
+
+    // 调试：显示FPS和状态
+    ctx.fillStyle = '#444';
+    ctx.font = '12px Microsoft Yahei';
+    ctx.textAlign = 'right';
+    ctx.fillText('Word: ' + dropWord + ' | Y: ' + Math.floor(wordY), canvas.width - 10, 20);
+
+    updateUI();
+  }, 16);
+}
+
+console.log('游戏脚本加载完成');
+</script>
+</body>
+</html>
